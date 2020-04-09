@@ -143,7 +143,7 @@ class AutoSign(object):
         classname_list = soup.find_all('h3', class_="clearfix")
         for i, v in enumerate(courseId_list):
             res.append((v['value'], classId_list[i]['value'],
-                        classname_list[0].find_next('a').text))
+                        classname_list[i].find_next('a').text))
         return res
 
     async def get_activeid(self, classid, courseid, classname):
