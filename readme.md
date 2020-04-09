@@ -7,15 +7,30 @@
 支持普通签到，手势签到，二维码签到，位置签到，拍照签到
 
 ## 如何使用？
-1. 使用接口，自动24小时签到
+
+### 快速使用
+
+每次需要签到的时候，就在浏览器内访问这个链接
+
+`{}`替换成自己的账号密码
+
+`http://101.89.182.58:9090/sign?username={}&password={}`
+
+### 折腾使用
+
+####1.云函数,自动签到(0成本)
     参考此文
     https://www.z2blog.com/index.php/default/459.html
 
-2. 自己有服务器
+####2.自己有服务器
     稍加修改代码，挂在自己的服务器上定时执行
 
+####3.部署API接口
+    参考文章
+    https://www.z2blog.com/index.php/learn/509.html
 
-## 接口使用(非长期有效)
+
+## 接口使用
 
 ```
 http://101.89.182.58:9090/sign/
@@ -23,6 +38,9 @@ http://101.89.182.58:9090/sign/
 
 请求代码示例：
 ```python
+import requests
+
+# POST
 params = {
     'username': 'xxxxx',
     'password': 'xxxxx',
@@ -30,6 +48,11 @@ params = {
     'sckey': ''
 }
 requests.post('http://101.89.182.58:9090/sign/', params=params)
+
+# GET
+username = 'xxx'
+password = 'xxx'
+requests.get('http://101.89.182.58:9090/sign?username={}&password={}'.format(username, password))
 ```
 
 在线接口调试：
@@ -39,7 +62,7 @@ http://101.89.182.58:9090/docs#/default/sign_sign__post
 | 请求方式 |   参数   |  说明  | 是否必须 |
 | :------: | :------: | :----: | :------: |
 |          | username |  账号  |    是    |
-|   **POST**   | password |  密码  |    是    |
+|   **POST/GET**   | password |  密码  |    是    |
 |          | schoolid | 学校ID |    否    |
 | | sckey | server酱key | 否 |
 
@@ -67,6 +90,11 @@ http://passport2.chaoxing.com/login
 
 
 ## 更新日志
+4.9
+- 修复细节bug
+- 修复部分用户获取课程id失败的bug
+- 更新接口
+
 4.3
 - 简化courseid和classid提取
 
