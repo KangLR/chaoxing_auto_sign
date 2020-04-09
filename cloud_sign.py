@@ -33,6 +33,7 @@ cookies_file_path = cookies_path + "cookies.json"
 activeid_path = "./"
 activeid_file_path = activeid_path + "activeid.json"
 
+
 # =================配置区end===================
 
 
@@ -48,21 +49,29 @@ class AutoSign(object):
         self.session = requests.session()
         self.session.headers = self.headers
         self.username = username
-        # 读取指定用户的cookies
-        if self.check_cookies_status(username) is False:
-            self.login(password, schoolid, username)
-            self.save_cookies(username)
+        self.password = password
+        self.schoolid = schoolid
 
-    def save_cookies(self, username):
+    def set_cookies(self):
+        """设置cookies"""
+        if not self.check_cookies():
+            # 无效则重新登录，并保存cookies
+            if self.login():
+                self.save_cookies()
+            else:
+                return False
+        return True
+
+    def save_cookies(self):
         """保存cookies"""
         new_cookies = self.session.cookies.get_dict()
         with open(cookies_file_path, "r") as f:
             data = json.load(f)
-            data[username] = new_cookies
+            data[self.username] = new_cookies
             with open(cookies_file_path, 'w') as f2:
                 json.dump(data, f2)
 
-    def check_cookies_status(self, username):
+    def check_cookies(self):
         """检测json文件内是否存有cookies,有则检测，无则登录"""
         if "cookies.json" not in os.listdir(cookies_path):
             with open(cookies_file_path, 'w+') as f:
@@ -72,7 +81,7 @@ class AutoSign(object):
             # json文件有无账号cookies, 没有，则直接返回假
             try:
                 data = json.load(f)
-                cookies = data[username]
+                cookies = data[self.username]
             except Exception:
                 return False
 
@@ -85,31 +94,34 @@ class AutoSign(object):
                 'http://i.mooc.chaoxing.com/app/myapps.shtml',
                 allow_redirects=False)
             if r.status_code != 200:
-                print("cookies已失效，重新获取中")
+                print("cookies已失效")
                 return False
             else:
                 print("cookies有效哦")
                 return True
 
-    def login(self, password, schoolid, username):
+    def login(self):
         # 登录-手机邮箱登录
-        if schoolid:
+        if self.schoolid:
             r = self.session.post(
                 'http://passport2.chaoxing.com/api/login?name={}&pwd={}&schoolid={}&verify=0'.format(
-                    username, password, schoolid))
+                    self.username, self.password, self.schoolid))
             if json.loads(r.text)['result']:
                 print("登录成功")
+                return True
+
             else:
-                print("登录失败，请检查账号密码是否正确")
+                return False
 
         else:
             r = self.session.get(
                 'https://passport2.chaoxing.com/api/login?name={}&pwd={}&schoolid=&verify=0'.format(
-                    username, password), headers=self.headers)
+                    self.username, self.password), headers=self.headers)
             if json.loads(r.text)['result']:
                 print("登录成功")
+                return True
             else:
-                print("登录失败，请检查账号密码是否正确")
+                return False
 
     def check_activeid(self, activeid):
         """检测activeid是否存在，不存在则添加"""
@@ -143,7 +155,7 @@ class AutoSign(object):
         classname_list = soup.find_all('h3', class_="clearfix")
         for i, v in enumerate(courseId_list):
             res.append((v['value'], classId_list[i]['value'],
-                        classname_list[0].find_next('a').text))
+                        classname_list[i].find_next('a').text))
         return res
 
     async def get_activeid(self, classid, courseid, classname):
@@ -283,7 +295,7 @@ class AutoSign(object):
         }
         return s
 
-    def sign_in(self, classid, courseid, activeid, sign_type):
+    def sign_in_type_judgment(self, classid, courseid, activeid, sign_type):
         """签到类型的逻辑判断"""
         if self.check_activeid(activeid):
             return
@@ -306,23 +318,22 @@ class AutoSign(object):
     def sign_tasks_run(self):
         """开始所有签到任务"""
         tasks = []
-        final_msg = []
-
+        res = []
         # 获取所有课程的classid和course_id
         classid_courseId = self.get_all_classid()
 
-        # 获取所有课程activeid和签到类型
+        # 使用协程获取所有课程activeid和签到类型
         for i in classid_courseId:
             coroutine = self.get_activeid(i[1], i[0], i[2])
             tasks.append(coroutine)
-
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         result = loop.run_until_complete(asyncio.gather(*tasks))
+
         for r in result:
             if r:
                 for d in r['class'].values():
-                    s = self.sign_in(
+                    s = self.sign_in_type_judgment(
                         d['classid'],
                         d['courseid'],
                         d['activeid'],
@@ -334,60 +345,78 @@ class AutoSign(object):
                             'date': s['date'],
                             'status': s['status']
                         }
-                        final_msg.append(sign_msg)
+                        res.append(sign_msg)
 
-        # TODO 统一返回格式
-        # final_msg = {
-        #     'msg': 'success',
-        #     'detail': [{},{}],
-        # }
-
+        if res:
+            final_msg = {
+                'msg': True,
+                'detail': res,
+            }
+        else:
+            final_msg = {
+                'msg': False,
+                'detail': '当前暂无签到任务'
+            }
         return final_msg
 
 
-def server_chan_send(msg, sckey=None):
+def server_chan_send(msgs, sckey=None):
     """server酱将消息推送至微信"""
     desp = ''
-    for d in msg:
+    for msg in msgs:
         desp = '|  **课程名**  |   {}   |\r\r| :----------: | :---------- |\r\r'.format(
-            d['name'])
-        desp += '| **签到时间** |   {}   |\r\r'.format(d['date'])
-        desp += '| **签到状态** |   {}   |\r\r'.format(d['status'])
+            msg['name'])
+        desp += '| **签到时间** |   {}   |\r\r'.format(msg['date'])
+        desp += '| **签到状态** |   {}   |\r\r'.format(msg['status'])
 
     params = {
-        'text': '【】您的网课签到消息来啦！！',
+        'text': '您的网课签到消息来啦！',
         'desp': desp
     }
+    if sckey:
+        requests.get('https://sc.ftqq.com/{}.send'.format(sckey), params=params)
+    else:
+        requests.get(server_chan['url'], params=params)
 
-    requests.get(server_chan['url'], params=params)
 
-
-def local_run():
-    # 本地运行使用
+def run_local():
+    """本地运行使用"""
     s = AutoSign(user_info['username'], user_info['password'])
+    if not s.set_cookies():
+        return {
+            'msg': False,
+            'detail': '登录失败，请检测账号密码是否正确'
+        }
+
     result = s.sign_tasks_run()
-    if result:
+    detail = result['detail']
+    if result['msg']:
         if server_chan['status']:
-            server_chan_send(result)
-        return result
-    else:
-        return "暂无签到任务"
+            server_chan_send(detail)
+
+    return detail
 
 
-def interface(username, password, sckey):
-    s = AutoSign(username, password)
+def interface(user_info, sckey):
+    s = AutoSign(user_info['username'], user_info['password'], user_info['schoolid'])
+    if not s.set_cookies():
+        return {
+            'msg': False,
+            'detail': '登录失败，请检测账号密码是否正确'
+        }
+
     result = s.sign_tasks_run()
-    if result:
+    detail = result['detail']
+    if result['msg']:
         if server_chan['status']:
-            server_chan_send(result, sckey)
-        return result
-    else:
-        return "暂无签到任务"
+            server_chan_send(detail, sckey)
+
+    return detail
 
 
 if __name__ == '__main__':
     # try:
-    # 	print(local_run())
+    # 	print(run_local())
     # except Exception as e:
     # 	print(e)
-    print(local_run())
+    print(run_local())

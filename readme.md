@@ -27,6 +27,7 @@ params = {
     'username': 'xxxxx',
     'password': 'xxxxx',
     'schoolid': '',
+    'sckey': ''
 }
 requests.post('http://101.89.182.58:9090/sign/', params=params)
 ```
