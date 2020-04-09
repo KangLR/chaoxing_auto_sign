@@ -47,7 +47,7 @@ params = {
     'schoolid': '',
     'sckey': ''
 }
-requests.post('http://101.89.182.58:9090/sign/', params=params)
+requests.post('http://101.89.182.58:9090/sign', params=params)
 
 # GET
 username = 'xxx'
