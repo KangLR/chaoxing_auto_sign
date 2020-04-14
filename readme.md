@@ -19,6 +19,11 @@
 
 整合FastApi轻量级框架，可以将此项目部署到服务器，通过接口请求来实现签到功能
 
+TODO:
+
+因为频繁写入和读取`cookies.json`和`activeid.json`
+
+准备上一个mongodb数据库，存储每个请求账户的账号，cookie，已签到的activeid，该用户的所有课程id
 
 ## 如何使用？
 
