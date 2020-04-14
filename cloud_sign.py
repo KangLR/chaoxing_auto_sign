@@ -8,33 +8,7 @@ import requests
 from lxml import etree
 from bs4 import BeautifulSoup
 requests.packages.urllib3.disable_warnings()
-
-# =================配置区start===================
-
-# 学习通账号密码
-user_info = {
-    'username': 'xxxx',
-    'password': 'xxxx',
-    'schoolid': ''  # 学号登录才需要填写
-}
-
-# server酱
-server_chan_sckey = 'xxxx'  # 申请地址http://sc.ftqq.com/3.version
-server_chan = {
-    'status': True,  # 如果关闭server酱功能，请改为False
-    'url': 'https://sc.ftqq.com/{}.send'.format(server_chan_sckey)
-}
-
-# 学习通账号cookies缓存文件路径
-cookies_path = "./"
-cookies_file_path = cookies_path + "cookies.json"
-
-# activeid保存文件路径
-activeid_path = "./"
-activeid_file_path = activeid_path + "activeid.json"
-
-
-# =================配置区end===================
+from config import *
 
 
 class AutoSign(object):
@@ -54,30 +28,29 @@ class AutoSign(object):
 
     def set_cookies(self):
         """设置cookies"""
+        login_status = self.login()
         if not self.check_cookies():
             # 无效则重新登录，并保存cookies
-            if self.login():
+            if login_status == 1000:
                 self.save_cookies()
-            else:
-                return False
-        return True
+        return login_status
 
     def save_cookies(self):
         """保存cookies"""
         new_cookies = self.session.cookies.get_dict()
-        with open(cookies_file_path, "r") as f:
+        with open(COOKIES_FILE_PATH, "r") as f:
             data = json.load(f)
             data[self.username] = new_cookies
-            with open(cookies_file_path, 'w') as f2:
+            with open(COOKIES_FILE_PATH, 'w') as f2:
                 json.dump(data, f2)
 
     def check_cookies(self):
         """检测json文件内是否存有cookies,有则检测，无则登录"""
-        if "cookies.json" not in os.listdir(cookies_path):
-            with open(cookies_file_path, 'w+') as f:
+        if "cookies.json" not in os.listdir(COOKIES_PATH):
+            with open(COOKIES_FILE_PATH, 'w+') as f:
                 f.write("{}")
 
-        with open(cookies_file_path, 'r') as f:
+        with open(COOKIES_FILE_PATH, 'r') as f:
             # json文件有无账号cookies, 没有，则直接返回假
             try:
                 data = json.load(f)
@@ -102,35 +75,31 @@ class AutoSign(object):
 
     def login(self):
         # 登录-手机邮箱登录
-        if self.schoolid:
-            r = self.session.post(
-                'http://passport2.chaoxing.com/api/login?name={}&pwd={}&schoolid={}&verify=0'.format(
-                    self.username, self.password, self.schoolid))
-            if json.loads(r.text)['result']:
-                print("登录成功")
-                return True
+        r = self.session.get(
+            'https://passport2.chaoxing.com/api/login?name={}&pwd={}&schoolid={}&verify=0'.format(
+                self.username, self.password, self.schoolid if self.schoolid else ""), headers=self.headers)
+        if r.status_code == 403:
+            return 1002
+        data = json.loads(r.text)
+        # try:
+        #     data = json.loads(r.text)
+        # except:
+        #     return 1002 # 拒绝访问
 
-            else:
-                return False
-
+        if data['result']:
+            print("登录成功")
+            return 1000 # 登录成功
         else:
-            r = self.session.get(
-                'https://passport2.chaoxing.com/api/login?name={}&pwd={}&schoolid=&verify=0'.format(
-                    self.username, self.password), headers=self.headers)
-            if json.loads(r.text)['result']:
-                print("登录成功")
-                return True
-            else:
-                return False
+            return 1001 # 登录信息有误
 
     def check_activeid(self, activeid):
         """检测activeid是否存在，不存在则添加"""
         activeid += self.username
-        if "activeid.json" not in os.listdir(activeid_path):
-            with open(activeid_file_path, 'w+') as f:
+        if "activeid.json" not in os.listdir(ACTIVEID_PATH):
+            with open(ACTIVEID_FILE_PATH, 'w+') as f:
                 f.write("{}")
 
-        with open(activeid_file_path, 'r') as f:
+        with open(ACTIVEID_FILE_PATH, 'r') as f:
             try:
                 # 读取文件
                 data = json.load(f)
@@ -138,7 +107,7 @@ class AutoSign(object):
                     return True
             except BaseException:
                 # 如果出错，则表示没有此activeid，添加此activeid
-                with open(activeid_file_path, 'w') as f2:
+                with open(ACTIVEID_FILE_PATH, 'w') as f2:
                     data[activeid] = True
                     json.dump(data, f2)
                 return False
@@ -349,13 +318,13 @@ class AutoSign(object):
 
         if res:
             final_msg = {
-                'msg': True,
+                'msg': 2001,
                 'detail': res,
             }
         else:
             final_msg = {
-                'msg': False,
-                'detail': '当前暂无签到任务'
+                'msg': 2000,
+                'detail': STATUS_CODE_DICT[2000]
             }
         return final_msg
 
@@ -376,42 +345,51 @@ def server_chan_send(msgs, sckey=None):
     if sckey:
         requests.get('https://sc.ftqq.com/{}.send'.format(sckey), params=params)
     else:
-        requests.get(server_chan['url'], params=params)
+        requests.get(SERVER_CHAN['url'], params=params)
 
 
 def run_local():
     """本地运行使用"""
-    s = AutoSign(user_info['username'], user_info['password'])
-    if not s.set_cookies():
-        return {
-            'msg': False,
-            'detail': '登录失败，请检测账号密码是否正确'
-        }
+    try:
+        s = AutoSign(USER_INFO['username'], USER_INFO['password'])
+        login_status = s.set_cookies()
+        if login_status != 1000:
+            return {
+                'msg': login_status,
+                'detail': '登录失败，' + STATUS_CODE_DICT[login_status]
+            }
 
-    result = s.sign_tasks_run()
-    detail = result['detail']
-    if result['msg']:
-        if server_chan['status']:
-            server_chan_send(detail)
+        result = s.sign_tasks_run()
+        detail = result['detail']
+        if result['msg'] == 2001:
+            if SERVER_CHAN['status']:
+                server_chan_send(detail)
 
-    return detail
+        return detail
+    except:
+        return {'msg': 4000, 'detail': STATUS_CODE_DICT[4000]}
 
 
 def interface(user_info, sckey):
-    s = AutoSign(user_info['username'], user_info['password'], user_info['schoolid'])
-    if not s.set_cookies():
-        return {
-            'msg': False,
-            'detail': '登录失败，请检测账号密码是否正确'
-        }
+    try:
+        s = AutoSign(user_info['username'], user_info['password'], user_info['schoolid'])
+        login_status = s.set_cookies()
+        print(login_status)
+        if login_status != 1000:
+            return {
+                'msg': login_status,
+                'detail': '登录失败，' + STATUS_CODE_DICT[login_status]
+            }
 
-    result = s.sign_tasks_run()
-    detail = result['detail']
-    if result['msg']:
-        if server_chan['status']:
-            server_chan_send(detail, sckey)
+        result = s.sign_tasks_run()
+        detail = result['detail']
+        if result['msg'] == 2001:
+            if SERVER_CHAN['status']:
+                server_chan_send(detail, sckey)
 
-    return detail
+        return result
+    except:
+        return {'msg': 4000, 'detail': STATUS_CODE_DICT[4000]}
 
 
 if __name__ == '__main__':
