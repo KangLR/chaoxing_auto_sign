@@ -8,7 +8,7 @@ import requests
 from lxml import etree
 from bs4 import BeautifulSoup
 requests.packages.urllib3.disable_warnings()
-from config import *
+from local.config import *
 
 
 class AutoSign(object):
@@ -79,15 +79,18 @@ class AutoSign(object):
         # 登录-手机邮箱登录
         r = self.session.get(
             'https://passport2.chaoxing.com/api/login?name={}&pwd={}&schoolid={}&verify=0'.format(
-                self.username, self.password, self.schoolid if self.schoolid else ""), headers=self.headers)
+                self.username,
+                self.password,
+                self.schoolid if self.schoolid else ""),
+            headers=self.headers)
         if r.status_code == 403:
             return 1002
         data = json.loads(r.text)
         if data['result']:
             print("登录成功")
-            return 1000 # 登录成功
+            return 1000  # 登录成功
         else:
-            return 1001 # 登录信息有误
+            return 1001  # 登录信息有误
 
     def check_activeid(self, activeid):
         """检测activeid是否存在，不存在则添加"""
@@ -296,7 +299,7 @@ class AutoSign(object):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         result = loop.run_until_complete(asyncio.gather(*tasks))
-
+        loop.close()
         for r in result:
             if r:
                 for d in r['class'].values():
@@ -341,7 +344,9 @@ def server_chan_send(msgs, sckey=None):
         'desp': desp
     }
     if sckey:
-        requests.get('https://sc.ftqq.com/{}.send'.format(sckey), params=params)
+        requests.get(
+            'https://sc.ftqq.com/{}.send'.format(sckey),
+            params=params)
     else:
         requests.get(SERVER_CHAN['url'], params=params)
 
@@ -364,34 +369,12 @@ def run_local():
                 server_chan_send(detail)
 
         return detail
-    except:
-        return {'msg': 4000, 'detail': STATUS_CODE_DICT[4000]}
-
-
-def interface(user_info, sckey):
-    try:
-        s = AutoSign(user_info['username'], user_info['password'], user_info['schoolid'])
-        login_status = s.set_cookies()
-        if login_status != 1000:
-            return {
-                'msg': login_status,
-                'detail': '登录失败，' + STATUS_CODE_DICT[login_status]
-            }
-
-        result = s.sign_tasks_run()
-        detail = result['detail']
-        if result['msg'] == 2001:
-            if SERVER_CHAN['status']:
-                server_chan_send(detail, sckey)
-
-        return result
-    except:
+    except BaseException:
         return {'msg': 4000, 'detail': STATUS_CODE_DICT[4000]}
 
 
 if __name__ == '__main__':
-    # try:
-    # 	print(run_local())
-    # except Exception as e:
-    # 	print(e)
-    print(run_local())
+    try:
+        print(run_local())
+    except Exception as e:
+        print(e)

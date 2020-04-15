@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from cloud_sign import *
+from api.cloud_sign import *
 
 
 app = FastAPI()

@@ -1,68 +1,58 @@
 ## 功能描述
 
-登录方式：
+- 登录方式：
 
 支持手机号码登录，支持学号登录
 
-
-签到功能：
+- 签到功能：
 
 支持普通签到，手势签到，二维码签到，位置签到，拍照签到
 
-
-微信推送：
+- 微信推送：
 
 配置server酱key后，签到消息可以推送至您的个人微信
 
+- 接口部署：
 
-接口部署：
+使用FastApi框架 和 MongoDB数据库，可以将此项目部署到服务器，通过接口实现多用户多任务签到
 
-整合FastApi轻量级框架，可以将此项目部署到服务器，通过接口请求来实现签到功能
 
-TODO:
 
-因为频繁写入和读取`cookies.json`和`activeid.json`
+## 项目目录
 
-准备上一个mongodb数据库，存储每个请求账户的账号，cookie，已签到的activeid，该用户的所有课程id
+```
+|--api							// 【部署api使用】
+    |--- cloud_sign.py			// 整体逻辑
+    |--- config.py				// 配置信息
+    |--- db_handler.py			// 数据库操作
+    |--- main.py				// fastapi运行
+    |--- sign_in_script.py		// 负责签到
+|--local						// 【本地运行使用】
+	|--- cloud_sign.py			// 运行此文件
+	|--- config.py 				// 个人信息配置
+	
+```
 
-## 如何使用？
+如果你需要**部署api**，供自己和其他人使用，可以选择`api`下的脚本
 
-### 快速使用
+如果你只是**自己**使用，本地运行，可以选择`local`的脚本
+
+
+
+## 不想折腾？
 
 每次需要签到的时候，就在浏览器内访问这个链接
 
 `{}`替换成自己的账号密码
 
-`http://101.89.182.58:9090/sign?username={}&password={}`
+`http://101.89.182.58:9090/sign?username={}&password={}&schoolid=&sckey=`
 
-### 折腾使用
-
-####1.云函数,自动签到(0成本)
-
-    参考此文
-    https://www.z2blog.com/index.php/default/459.html
-
-
-####2.自己有服务器
-
-    稍加修改代码，挂在自己的服务器上定时执行
-
-
-####3.部署API接口
-
-    参考文章
-    https://www.z2blog.com/index.php/learn/509.html
-
-
-温馨提示：
-
-有条件的朋友，建议自己搭建一个接口，现在这接口并不是很稳定
 
 
 ## 接口使用
 
 ```
-http://101.89.182.58:9090/sign/
+http://101.89.182.58:9090/sign
 ```
 
 请求代码示例：
@@ -85,7 +75,8 @@ requests.get('http://101.89.182.58:9090/sign?username={}&password={}'.format(use
 ```
 
 在线接口调试：
-http://101.89.182.58:9090/docs#/default/sign_sign__post
+
+<http://101.89.182.58:9090/docs#/default/sign_sign_get>
 
 
 | 请求方式 |   参数   |  说明  | 是否必须 |
@@ -103,7 +94,9 @@ http://101.89.182.58:9090/docs#/default/sign_sign__post
 
 http://passport2.chaoxing.com/login
 
-![schoolid][5]
+动图演示：
+
+![2020/04/15/cdf5a0415014614.gif](http://cdn.z2blog.com/2020/04/15/cdf5a0415014614.gif)
 
 
 ## 其他签到脚本推荐
@@ -115,41 +108,3 @@ http://passport2.chaoxing.com/login
 | https://github.com/Huangyan0804/AutoCheckin             | Python     | 学习通自动签到，支持手势，二维码，位置，拍照等 |
 | https://github.com/aihuahua-522/chaoxing-testforAndroid | Java       | 学习通（超星）自动签到               |
 | https://github.com/yuban10703/chaoxingsign              | Python     | 超星学习通自动签到                   |
-
-
-
-## 更新日志
-4.9
-- 修复细节bug
-- 修复部分用户获取课程id失败的bug
-- 更新接口
-
-4.3
-- 简化courseid和classid提取
-
-4.2
-- 修复多用户多签到任务bug
-
-3.21
-- 加入activeid缓存，会将所有签到成功的activeid记录在activeid.txt,避免重复触发签到
-
-3.20 
-- 加入server酱，签到消息可推送至微信
-- 纠正因证书问题，导致运行过程中，输出大量异常消息
-- 优化签到类型的逻辑判断
-
-3.18 新增二维码，拍照，位置签到
-
-3.18 修复登录失败问题
-
-3.17 更新手势签到，无需手动输入验证码
-
-3.15 支持学号方式登录,目前可以通过(手机号码，邮箱，学号登录)
-
-3.10 新增手势签到
-
-
-## 扩展
-1. 配合fastapi，挂到服务器上，定时请求，全天自动签到
-2. 做成QQ或微信机器人插件，可以面向大众用户使用
-3. 结合Server酱，可以将签到结果推送给用户微信
