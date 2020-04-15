@@ -1,10 +1,6 @@
 ## 环境：
 
-python3.7
-
-mongodb
-
-
+python3.7 , mongodb
 
 ## screen
 

@@ -37,6 +37,11 @@
 
 如果你需要**部署api**，供自己和其他人使用，可以选择`api`下的脚本
 
+参考此文：
+
+https://github.com/mkdir700/chaoxing_auto_sign/blob/master/api/readme.md
+
+
 如果你只是**自己**使用，本地运行，可以选择`local`的脚本
 
 
