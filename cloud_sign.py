@@ -28,12 +28,13 @@ class AutoSign(object):
 
     def set_cookies(self):
         """设置cookies"""
-        login_status = self.login()
         if not self.check_cookies():
             # 无效则重新登录，并保存cookies
+            login_status = self.login()
             if login_status == 1000:
                 self.save_cookies()
-        return login_status
+        else:
+            return 1000
 
     def save_cookies(self):
         """保存cookies"""
@@ -81,11 +82,6 @@ class AutoSign(object):
         if r.status_code == 403:
             return 1002
         data = json.loads(r.text)
-        # try:
-        #     data = json.loads(r.text)
-        # except:
-        #     return 1002 # 拒绝访问
-
         if data['result']:
             print("登录成功")
             return 1000 # 登录成功
@@ -125,6 +121,7 @@ class AutoSign(object):
         for i, v in enumerate(courseId_list):
             res.append((v['value'], classId_list[i]['value'],
                         classname_list[i].find_next('a').text))
+        print(res)
         return res
 
     async def get_activeid(self, classid, courseid, classname):
@@ -374,7 +371,6 @@ def interface(user_info, sckey):
     try:
         s = AutoSign(user_info['username'], user_info['password'], user_info['schoolid'])
         login_status = s.set_cookies()
-        print(login_status)
         if login_status != 1000:
             return {
                 'msg': login_status,
