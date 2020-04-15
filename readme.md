@@ -20,17 +20,22 @@
 
 ## 项目目录
 
+```
+├── api
+│   ├── cloud_sign.py
+│   ├── config.py
+│   ├── db_handler.py
+│   ├── main.py
+│   ├── requirements.txt
+│   └── sign_in_script.py
+├── local
+│   ├── cloud_sign.py
+│   ├── config.py
+│   └── requirements.txt
+└── readme.md
 
-|--api							// 【部署api使用】
-    |--- cloud_sign.py			// 整体逻辑
-    |--- config.py				// 配置信息
-    |--- db_handler.py			// 数据库操作
-    |--- main.py				// fastapi运行
-    |--- sign_in_script.py		// 负责签到
-|--local						// 【本地运行使用】
-	|--- cloud_sign.py			// 运行此文件
-	|--- config.py 				// 个人信息配置
-
+	
+```
 
 如果你需要**部署api**，供自己和其他人使用，可以选择`api`下的脚本
 
