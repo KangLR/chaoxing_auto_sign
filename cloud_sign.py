@@ -33,6 +33,8 @@ class AutoSign(object):
             login_status = self.login()
             if login_status == 1000:
                 self.save_cookies()
+            else:
+                return 1001
         else:
             return 1000
 
