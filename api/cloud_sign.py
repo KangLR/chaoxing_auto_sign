@@ -5,9 +5,9 @@ import requests
 from lxml import etree
 from bs4 import BeautifulSoup
 requests.packages.urllib3.disable_warnings()
-from api.config import *
-from api.db_handler import *
-from api.sign_in_script import *
+from config import *
+from db_handler import *
+from sign_in_script import *
 
 
 class AutoSign(object):
@@ -115,7 +115,6 @@ class AutoSign(object):
         r = self.session.get(
             'https://mobilelearn.chaoxing.com/widget/pcpick/stu/index?courseId={}&jclassId={}'.format(
                 courseid, classid), headers=self.headers, verify=False)
-        # res = re.findall(re_rule, r.text)
         res = []
         h = etree.HTML(r.text)
         activeid_list = h.xpath('//*[@id="startList"]/div/div/@onclick')
@@ -127,6 +126,7 @@ class AutoSign(object):
             res.append((activeid[0], sign_type))
 
         n = len(res)
+        print(res, n)
         if n == 0:
             return None
         else:
@@ -173,6 +173,7 @@ class AutoSign(object):
         asyncio.set_event_loop(loop)
         result = loop.run_until_complete(asyncio.gather(*tasks))
         loop.close()
+        print(result)
         for r in result:
             if r:
                 for d in r['class'].values():

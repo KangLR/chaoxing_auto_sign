@@ -33,8 +33,6 @@
 │   ├── config.py
 │   └── requirements.txt
 └── readme.md
-
-	
 ```
 
 如果你需要**部署api**，供自己和其他人使用，可以选择`api`下的脚本

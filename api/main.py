@@ -1,5 +1,6 @@
+import os
 from fastapi import FastAPI
-from api.cloud_sign import *
+from cloud_sign import *
 
 
 app = FastAPI()
