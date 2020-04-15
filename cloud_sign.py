@@ -35,8 +35,7 @@ class AutoSign(object):
                 self.save_cookies()
             else:
                 return 1001
-        else:
-            return 1000
+        return 1000
 
     def save_cookies(self):
         """保存cookies"""
