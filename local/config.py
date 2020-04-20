@@ -2,8 +2,8 @@
 
 # 学习通账号密码
 USER_INFO = {
-    'username': 'xxx',
-    'password': 'xxx',
+    'username': 'xxxx',
+    'password': 'xxxx',
     'schoolid': ''  # 学号登录才需要填写
 }
 
@@ -21,6 +21,19 @@ COOKIES_FILE_PATH = COOKIES_PATH + "cookies.json"
 # activeid保存文件路径
 ACTIVEID_PATH = "./"
 ACTIVEID_FILE_PATH = ACTIVEID_PATH + "activeid.json"
+
+# 拍照签到的图片文件
+IMAGE_PATH = "./image/"
+
+# 位置信息
+latitude = "-2"
+longitude = "-1"
+
+# ip地址
+clientip = "0.0.0.0"
+
+# DEBUG开关
+DEBUG = False
 
 # 状态码
 STATUS_CODE_DICT = {

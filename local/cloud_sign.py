@@ -4,6 +4,7 @@ import time
 import asyncio
 import re
 import json
+import random
 import requests
 from lxml import etree
 from bs4 import BeautifulSoup
@@ -202,10 +203,10 @@ class AutoSign(object):
             'name': '',
             'activeId': activeId,
             'uid': '',
-            'clientip': '',
+            'clientip': clientip,
             'useragent': '',
-            'latitude': '-1',
-            'longitude': '-1',
+            'latitude': latitude,
+            'longitude': longitude,
             'fid': '',
             'appType': '15'
         }
@@ -225,9 +226,9 @@ class AutoSign(object):
             'activeId': activeId,
             'address': '中国',
             'uid': '',
-            'clientip': '0.0.0.0',
-            'latitude': '-2',
-            'longitude': '-1',
+            'clientip': clientip,
+            'latitude': latitude,
+            'longitude': longitude,
             'fid': '',
             'appType': '15',
             'ifTiJiao': '1'
@@ -243,18 +244,19 @@ class AutoSign(object):
 
     def tphoto_sign(self, activeId):
         """拍照签到"""
+        objectId = self.upload_img()
         params = {
             'name': '',
             'activeId': activeId,
             'address': '中国',
             'uid': '',
-            'clientip': '0.0.0.0',
-            'latitude': '-2',
-            'longitude': '-1',
+            'clientip': clientip,
+            'latitude': latitude,
+            'longitude': longitude,
             'fid': '',
             'appType': '15',
             'ifTiJiao': '1',
-            'objectId': '5712278eff455f9bcd76a85cd95c5de3'
+            'objectId': objectId
         }
         res = self.session.get(
             'https://mobilelearn.chaoxing.com/pptSign/stuSignajax',
@@ -264,6 +266,30 @@ class AutoSign(object):
             'status': res.text
         }
         return s
+
+    def get_token(self):
+        """获取上传文件所需参数token"""
+        url = 'https://pan-yz.chaoxing.com/api/token/uservalid'
+        res = self.session.get(url, headers=self.headers)
+        token_dict = json.loads(res.text)
+        return (token_dict['_token'])
+
+    def upload_img(self):
+        """上传图片"""
+        # 从图片文件夹内随机选择一张图片
+        all_img = os.listdir(IMAGE_PATH)
+        img = IMAGE_PATH + random.choice(all_img)
+        if len(all_img) == 0:
+            return "da82dee9f197a1ab22614efd39e20c14"
+        else:
+            uid = self.session.cookies.get_dict()['UID']
+            url = 'https://pan-yz.chaoxing.com/upload'
+            files = {'file': (img, open(img, 'rb'),
+                              'image/webp,image/*',), }
+            res = self.session.post(url, data={'puid': uid, '_token': self.get_token(
+            )}, files=files, headers=self.headers)
+            res_dict = json.loads(res.text)
+            return (res_dict['objectId'])
 
     def sign_in_type_judgment(self, classid, courseid, activeid, sign_type):
         """签到类型的逻辑判断"""
@@ -351,7 +377,24 @@ def server_chan_send(msgs, sckey=None):
         requests.get(SERVER_CHAN['url'], params=params)
 
 
-def run_local():
+def debug():
+    s = AutoSign(USER_INFO['username'], USER_INFO['password'])
+    login_status = s.set_cookies()
+    if login_status != 1000:
+        return {
+            'msg': login_status,
+            'detail': '登录失败，' + STATUS_CODE_DICT[login_status]
+        }
+
+    result = s.sign_tasks_run()
+    detail = result['detail']
+    if result['msg'] == 2001:
+        if SERVER_CHAN['status']:
+            server_chan_send(detail)
+    return detail
+
+
+def gen_run():
     """本地运行使用"""
     try:
         s = AutoSign(USER_INFO['username'], USER_INFO['password'])
@@ -373,8 +416,12 @@ def run_local():
         return {'msg': 4000, 'detail': STATUS_CODE_DICT[4000]}
 
 
+def local_run():
+    if DEBUG:
+        debug()
+    else:
+        gen_run()
+
+
 if __name__ == '__main__':
-    try:
-        print(run_local())
-    except Exception as e:
-        print(e)
+    local_run()
