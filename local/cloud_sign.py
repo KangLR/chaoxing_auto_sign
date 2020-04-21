@@ -66,15 +66,19 @@ class AutoSign(object):
             self.session.cookies = cookies_jar
 
             # 检测cookies是否有效
-            r = self.session.get(
-                'http://i.mooc.chaoxing.com/app/myapps.shtml',
-                allow_redirects=False)
-            if r.status_code != 200:
+            r = self.session.get('http://notice.chaoxing.com/pc/notice/getUnitList')
+            try:
+                r = r.json()
+            except:
                 print("cookies已失效")
                 return False
-            else:
+
+            if r['status']:
                 print("cookies有效哦")
                 return True
+            else:
+                print("cookies已失效")
+                return False
 
     def login(self):
         # 登录-手机邮箱登录
