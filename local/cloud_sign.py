@@ -391,7 +391,7 @@ def debug():
     if result['msg'] == 2001:
         if SERVER_CHAN['status']:
             server_chan_send(detail)
-    print(detail)
+    return detail
 
 
 def gen_run():
@@ -411,17 +411,16 @@ def gen_run():
             if SERVER_CHAN['status']:
                 server_chan_send(detail)
 
-        print(detail)
+        return detail
     except BaseException:
-        print({'msg': 4000, 'detail': STATUS_CODE_DICT[4000]})
-        # return
+        return {'msg': 4000, 'detail': STATUS_CODE_DICT[4000]}
 
 
 def local_run():
     if DEBUG:
-        debug()
+        print(debug())
     else:
-        gen_run()
+        print(gen_run())
 
 
 if __name__ == '__main__':
