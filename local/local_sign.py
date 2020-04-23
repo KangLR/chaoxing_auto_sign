@@ -6,10 +6,10 @@ import re
 import json
 import random
 import requests
+from config import *
 from lxml import etree
 from bs4 import BeautifulSoup
 requests.packages.urllib3.disable_warnings()
-from config import *
 
 
 class AutoSign(object):
@@ -66,10 +66,11 @@ class AutoSign(object):
             self.session.cookies = cookies_jar
 
             # 检测cookies是否有效
-            r = self.session.get('http://notice.chaoxing.com/pc/notice/getUnitList')
+            r = self.session.get(
+                'http://notice.chaoxing.com/pc/notice/getUnitList')
             try:
                 r = r.json()
-            except:
+            except BaseException:
                 print("cookies已失效")
                 return False
 
@@ -133,9 +134,16 @@ class AutoSign(object):
         print(res)
         return res
 
+    def get_sign_type(self, classid, courseid, activeid):
+        """获取签到类型"""
+        sign_url = 'https://mobilelearn.chaoxing.com/widget/sign/pcStuSignController/preSign?activeId={}&classId={}&courseId={}'.format(activeid, classid, courseid)
+        response = self.session.get(sign_url, headers=self.headers)
+        h = etree.HTML(response.text)
+        sign_type = h.xpath('//div[@class="location"]/span/text()')
+        return sign_type
+
     async def get_activeid(self, classid, courseid, classname):
         """访问任务面板获取课程的活动id"""
-        # re_rule = r'<div class="Mct" onclick="activeDetail\((.*),2,null\)">[\s].*[\s].*[\s].*[\s].*<dd class="green">.*</dd>[\s]+[\s]</a>[\s]+</dl>[\s]+<div class="Mct_center wid660 fl">[\s]+<a href="javascript:;" shape="rect">(.*)</a>'
         re_rule = r'([\d]+),2'
         r = self.session.get(
             'https://mobilelearn.chaoxing.com/widget/pcpick/stu/index?courseId={}&jclassId={}'.format(
@@ -144,12 +152,13 @@ class AutoSign(object):
         res = []
         h = etree.HTML(r.text)
         activeid_list = h.xpath('//*[@id="startList"]/div/div/@onclick')
-        sign_type_list = h.xpath('//*[@id="startList"]/div/div/div/a/text()')
-        for activeid, sign_type in zip(activeid_list, sign_type_list):
+        # sign_type_list = h.xpath('//*[@id="startList"]/div/div/div/a/text()')
+        for activeid in activeid_list:
             activeid = re.findall(re_rule, activeid)
             if not activeid:
                 continue
-            res.append((activeid[0], sign_type))
+            sign_type = self.get_sign_type(classid, courseid, activeid[0])
+            res.append((activeid[0], sign_type[0]))
 
         n = len(res)
         if n == 0:
@@ -157,7 +166,8 @@ class AutoSign(object):
         else:
             d = {'num': n, 'class': {}}
             for i in range(n):
-                # 预防同一门课程多个签到任务的情况
+                if self.check_activeid(res[i][0]):
+                    continue
                 d['class'][i] = {
                     'classid': classid,
                     'courseid': courseid,
@@ -181,9 +191,8 @@ class AutoSign(object):
             # 网页标题不含签到成功，则为拍照签到
             return self.tphoto_sign(activeid)
         else:
-            sign_date = re.findall('<em id="st">(.*)</em>', r.text)[0]
             s = {
-                'date': sign_date,
+                'date': time.strftime("%m-%d %H:%M", time.localtime()),
                 'status': title
             }
             return s
@@ -194,9 +203,8 @@ class AutoSign(object):
             courseid, classid, activeid)
         r = self.session.get(hand_sign_url, headers=self.headers, verify=False)
         title = re.findall('<title>(.*)</title>', r.text)
-        sign_date = re.findall('<em id="st">(.*)</em>', r.text)[0]
         s = {
-            'date': sign_date,
+            'date': time.strftime("%m-%d %H:%M", time.localtime()),
             'status': title
         }
         return s
@@ -290,28 +298,28 @@ class AutoSign(object):
             url = 'https://pan-yz.chaoxing.com/upload'
             files = {'file': (img, open(img, 'rb'),
                               'image/webp,image/*',), }
-            res = self.session.post(url, data={'puid': uid, '_token': self.get_token(
-            )}, files=files, headers=self.headers)
+            res = self.session.post(
+                url,
+                data={
+                    'puid': uid,
+                    '_token': self.get_token()},
+                files=files,
+                headers=self.headers)
             res_dict = json.loads(res.text)
             return (res_dict['objectId'])
 
     def sign_in_type_judgment(self, classid, courseid, activeid, sign_type):
         """签到类型的逻辑判断"""
-        if self.check_activeid(activeid):
-            return
-
         if "手势" in sign_type:
             # test:('拍照签到', 'success')
             return self.hand_sign(classid, courseid, activeid)
-
         elif "二维码" in sign_type:
             return self.qcode_sign(activeid)
-
         elif "位置" in sign_type:
             return self.addr_sign(activeid)
-
+        elif "拍照" in sign_type:
+            return self.tphoto_sign(activeid)
         else:
-            # '[2020-03-20 14:42:35]-[签到成功]'
             r = self.general_sign(classid, courseid, activeid)
             return r
 
