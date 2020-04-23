@@ -1,7 +1,9 @@
 # -*- coding: utf8 -*-
 import json
 import asyncio
+import logging
 import requests
+import traceback
 from lxml import etree
 from bs4 import BeautifulSoup
 requests.packages.urllib3.disable_warnings()
@@ -85,7 +87,6 @@ class AutoSign(object):
         if activeid in activeid_lists:
             return True
         else:
-            self.mongo.to_save_istext_activeid(activeid)
             return False
 
     def get_all_classid(self) -> list:
@@ -109,6 +110,14 @@ class AutoSign(object):
             self.mongo.to_save_all_classid_and_courseid(res)
         return res
 
+    def get_sign_type(self, classid, courseid, activeid):
+        """获取签到类型"""
+        sign_url = 'https://mobilelearn.chaoxing.com/widget/sign/pcStuSignController/preSign?activeId={}&classId={}&courseId={}'.format(activeid, classid, courseid)
+        response = self.session.get(sign_url, headers=self.headers)
+        h = etree.HTML(response.text)
+        sign_type = h.xpath('//div[@class="location"]/span/text()')
+        return sign_type
+
     async def get_activeid(self, classid, courseid, classname):
         """访问任务面板获取课程的活动id"""
         re_rule = r'([\d]+),2'
@@ -118,12 +127,12 @@ class AutoSign(object):
         res = []
         h = etree.HTML(r.text)
         activeid_list = h.xpath('//*[@id="startList"]/div/div/@onclick')
-        sign_type_list = h.xpath('//*[@id="startList"]/div/div/div/a/text()')
-        for activeid, sign_type in zip(activeid_list, sign_type_list):
+        for activeid in activeid_list:
             activeid = re.findall(re_rule, activeid)
             if not activeid:
                 continue
-            res.append((activeid[0], sign_type))
+            sign_type = self.get_sign_type(classid, courseid, activeid[0])
+            res.append((activeid[0], sign_type[0]))
 
         n = len(res)
         print(res, n)
@@ -133,7 +142,7 @@ class AutoSign(object):
             d = {'num': n, 'class': {}}
             for i in range(n):
                 if self.check_activeid(res[i][0]):
-                    return None
+                    continue
                 d['class'][i] = {
                     'classid': classid,
                     'courseid': courseid,
@@ -146,15 +155,15 @@ class AutoSign(object):
     def sign_in_type_judgment(self, classid, courseid, activeid, sign_type):
         """签到类型的逻辑判断"""
         s = Sign(self.session, classid, courseid, activeid, sign_type)
+        print(sign_type)
         if "手势" in sign_type:
             return s.hand_sign()
-
         elif "二维码" in sign_type:
             return s.qcode_sign()
-
         elif "位置" in sign_type:
             return s.addr_sign()
-
+        elif "拍照" in sign_type:
+            return s.tphoto_sign()
         else:
             return s.general_sign()
 
@@ -182,13 +191,15 @@ class AutoSign(object):
                         d['courseid'],
                         d['activeid'],
                         d['sign_type'])
+
                     # 签到课程， 签到时间， 签到状态
                     sign_msg = {
                         'name': d['classname'],
                         'date': s['date'],
                         'status': STATUS_CODE_DICT[s['status']]
                     }
-                    # print(sign_msg)
+                    # 将签到成功activeid保存至数据库
+                    self.mongo.to_save_istext_activeid(d['activeid'])
                     res.append(sign_msg)
 
         if res:
@@ -223,26 +234,6 @@ def server_chan_send(msgs, sckey=None):
         requests.get(SERVER_CHAN['url'], params=params)
 
 
-def run_local():
-    """本地运行使用"""
-
-    s = AutoSign(USER_INFO['username'], USER_INFO['password'])
-    login_status = s.set_cookies()
-    if login_status != 1000:
-        return {
-            'msg': login_status,
-            'detail': '登录失败，' + STATUS_CODE_DICT[login_status]
-        }
-
-    result = s.sign_tasks_run()
-    detail = result['detail']
-    if result['msg'] == 2001:
-        if SERVER_CHAN['status']:
-            server_chan_send(detail)
-
-    return detail
-
-
 def interface(user_info, sckey):
     try:
         s = AutoSign(user_info['username'], user_info['password'], user_info['schoolid'])
@@ -259,15 +250,9 @@ def interface(user_info, sckey):
         if result['msg'] == 2001:
             if SERVER_CHAN['status']:
                 server_chan_send(detail, sckey)
-
         return result
-    except:
+
+    except Exception as e:
+        logging.basicConfig(filename='logs.log', format='%(asctime)s %(message)s', level=logging.DEBUG)
+        logging.error(traceback.format_exc())
         return {'msg': 4000, 'detail': STATUS_CODE_DICT[4000]}
-
-
-if __name__ == '__main__':
-    # try:
-    # 	print(run_local())
-    # except Exception as e:
-    # 	print(e)
-    print(run_local())

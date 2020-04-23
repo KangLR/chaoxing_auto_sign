@@ -1,5 +1,5 @@
+import json
 import time
-import re
 
 
 class Sign(object):
@@ -25,26 +25,18 @@ class Sign(object):
                 self.courseid),
             headers=self.headers,
             verify=False)
-        title = re.findall('<title>(.*)</title>', r.text)[0]
-        if "签到成功" not in title:
-            # 网页标题不含签到成功，则为拍照签到
-            return self.tphoto_sign()
-        else:
-            sign_date = re.findall('<em id="st">(.*)</em>', r.text)[0]
-            return {
-                'date': sign_date,
-                'status': 3000
-            }
+        return {
+            'date': time.strftime("%m-%d %H:%M", time.localtime()),
+            'status': 3000
+        }
 
     def hand_sign(self):
         """手势签到"""
         hand_sign_url = "https://mobilelearn.chaoxing.com/widget/sign/pcStuSignController/signIn?&courseId={}&classId={}&activeId={}".format(
             self.courseid, self.classid, self.activeid)
         r = self.session.get(hand_sign_url, headers=self.headers, verify=False)
-        title = re.findall('<title>(.*)</title>', r.text)
-        sign_date = re.findall('<em id="st">(.*)</em>', r.text)[0]
         return {
-            'date': sign_date,
+            'date': time.strftime("%m-%d %H:%M", time.localtime()),
             'status': 3001
         }
 
@@ -113,3 +105,27 @@ class Sign(object):
             'date': time.strftime("%m-%d %H:%M", time.localtime()),
             'status': 3002
         }
+
+    # def __get_token(self):
+    #     """获取上传文件所需参数token"""
+    #     url = 'https://pan-yz.chaoxing.com/api/token/uservalid'
+    #     res = self.session.get(url, headers=self.headers)
+    #     token_dict = json.loads(res.text)
+    #     return (token_dict['_token'])
+    #
+    # def __upload_img(self):
+    #     """上传图片"""
+    #     # 从图片文件夹内随机选择一张图片
+    #     all_img = os.listdir(IMAGE_PATH)
+    #     img = IMAGE_PATH + random.choice(all_img)
+    #     if len(all_img) == 0:
+    #         return "da82dee9f197a1ab22614efd39e20c14"
+    #     else:
+    #         uid = self.session.cookies.get_dict()['UID']
+    #         url = 'https://pan-yz.chaoxing.com/upload'
+    #         files = {'file': (img, open(img, 'rb'),
+    #                           'image/webp,image/*',), }
+    #         res = self.session.post(url, data={'puid': uid, '_token': self.__get_token(
+    #         )}, files=files, headers=self.headers)
+    #         res_dict = json.loads(res.text)
+    #         return (res_dict['objectId'])
