@@ -96,7 +96,7 @@ class Sign(object):
             'fid': '',
             'appType': '15',
             'ifTiJiao': '1',
-            'objectId': '5712278eff455f9bcd76a85cd95c5de3'
+            'objectId': 'da82dee9f197a1ab22614efd39e20c14'
         }
         self.session.get(
             'https://mobilelearn.chaoxing.com/pptSign/stuSignajax',
